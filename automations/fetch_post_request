@@ -1,0 +1,24 @@
+let {
+
+	// add comma separated inputs from the record (left side bar of the scripting action) here
+
+} = input.config();
+
+// fetch request
+let request_url = ""; // update url here
+
+let send = await fetch(request_url, {
+    method: 'POST', // update method as needed
+    headers: {
+        'Authorization': 'Bearer ', // adjust as needed
+        'Content-type': 'application/json'
+    },
+    body: JSON.stringify({
+		// add body here
+	})
+});
+console.log(send);
+let receive = await send.json();
+console.log(receive);
+// if you want to output the response (status, etc.) use the below
+// output.set("output1", receive.XYZ);
