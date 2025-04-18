@@ -1,0 +1,15 @@
+let {
+    subtasks // this should be a long-text field with rich text formatting checkboxes
+} = input.config();
+console.log(subtasks);
+
+// sort unchecked → checked
+let sorted_subtasks = subtasks
+  .split("\n")
+  .sort((a, b) => a.slice(0, 2).localeCompare(b.slice(0, 2)))
+  .toString()
+  .replace(/,/g, "\n")
+  .trim();
+
+console.log(sorted_subtasks);
+output.set("sorted_subtasks", sorted_subtasks); // use as input in update record action to overwrite prior field value
