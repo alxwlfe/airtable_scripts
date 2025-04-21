@@ -1,0 +1,74 @@
+let settings = input.config({
+    title: '📎⇣ Bulk attachment importer',
+    description: 'Upload multiple attachments to a single attachment cell, then run the script to create 1 record for each attachment in another table',
+    items: [
+        input.config.table('sourceTable', {
+            label: 'Table with the uploaded attachments',
+            description: 'You can also add a button field to this table to start this script!',
+        }),
+        input.config.field('sourceField', {
+            label: 'Attachment field inside the above table',
+            parentTable: 'sourceTable',
+        }),
+        input.config.table('destinationTable', {
+            label: 'Table to create records with individual attachments',
+        }),
+        input.config.field('nameField', {
+            label: 'Name field inside the above table (where filenames will be entered)',
+            parentTable: 'destinationTable',
+        }),
+        input.config.field('attachmentField', {
+            label: 'Attachment field inside the above table where individual files will be uploaded',
+            parentTable: 'destinationTable',
+        }),
+    ]
+});
+
+// Converts settings selections to variables
+let sourceTable = settings.sourceTable;
+let selectedField = settings.sourceField;
+let destinationTable = settings.destinationTable;
+let nameField = settings.nameField;
+let attachmentField = settings.attachmentField;
+
+if (attachmentField.type !== 'multipleAttachments' || selectedField.type !== 'multipleAttachments') {
+    throw new Error('Selected field must be an attachment field')
+}
+
+let record = await input.recordAsync('Select a record with the attachments you wish to import', sourceTable); // Button field to run script or prompt user to specify the record
+
+while (!record) {
+    output.text('You must select a record.');
+    record = await input.recordAsync('Select a record with the attachments you wish to import', sourceTable);
+}
+
+output.clear();
+
+let attachments = record.getCellValue(selectedField); // Attachments in the above record
+
+output.text("Available attachments: "); // Surface attachments for inspection
+output.table(attachments)
+
+if (attachments) {
+
+    // Creates an array based on the attachments to then create the individual records
+    let attachmentRecords = attachments.map(a => ({
+        fields: {
+            [nameField.id]: a.filename,
+            [attachmentField.id]: [{ url: a.url }]
+        }
+    }));
+
+    // Batches the record creation
+    while (attachmentRecords.length > 0) {
+        await destinationTable.createRecordsAsync(attachmentRecords.slice(0, 50));
+        attachmentRecords = attachmentRecords.slice(50);
+    };
+
+    output.markdown(`**${attachments.length} record(s) created!**`)
+
+} else {
+
+    output.clear();
+    output.markdown('No attachments uploaded to this record. Upload attachments to the record and rerun the script.');
+}
