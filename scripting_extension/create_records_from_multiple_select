@@ -1,0 +1,88 @@
+// Script settings
+let s = input.config({
+    title: '〽️ Create records from multiple select field options',
+    description: 'Creates 1 record in another table for each option in a multiple select field in the source table, and links the new records back to the source record.',
+    items: [
+        // Source table select
+        input.config.table('tableSource', {
+            label: '🍂 Table with existing records'
+        }),
+        // Source table: Multiple select field with deliverables
+        input.config.field('delivField', {
+            parentTable: 'tableSource',
+            label: '🍂 Multiple select field with names of records to create',
+        }),
+        // Destination table select
+        input.config.table('tableDest', {
+            label: '🌱 Table to create new records in'
+        }),
+        // Destination table: Name or title field
+        input.config.field('destinationField', {
+            parentTable: 'tableDest',
+            label: '🌱 Deliverable name or title field in destination table',
+        }),
+        // Destination table: Linked record field (back to the Source table record)
+        input.config.field('projField', {
+            parentTable: 'tableDest',
+            label: '🌱 Linked record field (links to table with existing records)',
+        }),
+    ]
+});
+// You can use a button field that points to this script to run it for specific records,
+// or you can run the script directly, in which case the following prompts the user to pick a record
+let r = await input.recordAsync('Pick a record', s.tableSource);
+while (!r) {
+    output.text('You must select a record.');
+    r = await input.recordAsync('Pick a record', s.tableSource);
+}
+
+// Gets the desired # of records to create, and deliverable names, based on the fields chosen in the script settings
+let recToCreate = s.delivField.options?.choices.length;
+let deliverables = r.getCellValue(s.delivField.name);
+
+// Variables to store the applicable deliverable names and length (total records to create)
+let delivNames = [];
+let length = 0;
+
+if (deliverables) {
+    // Creates record names from 'deliverables' multiple select field, if any
+    for (let item of deliverables) {
+        delivNames.push({
+            'Name': item.name
+        })
+    }
+    length = delivNames.length
+
+    // Preview records to create, prompt user to confirm creation
+    output.markdown('### Create ' + length + ' records for **' + r.name + '**?');
+
+    output.table(delivNames);
+    await input.buttonsAsync('', [{ label: 'Create records', value: 'Create records', variant: 'primary' }]);
+
+    // Create records
+    let dToCreate = [];
+
+    for (let i = 0; i < length; i++) {
+        let name = delivNames[i].Name
+
+        dToCreate.push({
+            fields: {
+                [s.destinationField.id]: name,
+                [s.projField.id]: [{ id: r.id }]
+            }
+        })
+
+    };
+
+    // Batches the creation
+    while (dToCreate.length > 0) {
+        await s.tableDest.createRecordsAsync(dToCreate.slice(0, 50));
+        dToCreate = dToCreate.slice(50);
+    }
+    // Output confirmation for the user
+    output.markdown(`
+        ${length} records created ✅
+    `);
+} else {
+    output.markdown(`**No deliverables chosen for this record. Make selections in the ${s.delivField.name} field first.**`)
+};
